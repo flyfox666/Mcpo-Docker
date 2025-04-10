@@ -8,7 +8,7 @@ An example Docker image for [mcpo](https://github.com/open-webui/mcpo)（with ap
 ```shell
 # Pull the repo
 git clone https://github.com/flyfox666/mcpo_docker_use.git
-cd Mcpo-Docker
+cd mcpo_docker_use
 
 # Copy sample files and edit them as you like.
 cp config.example.json config.json    #remember to update the apikey for the mcp if need
