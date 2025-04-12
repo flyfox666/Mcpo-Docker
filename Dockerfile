@@ -44,9 +44,13 @@ RUN echo '#!/bin/bash\n\
 date_str=$(date +"%Y%m%d_%H%M%S")\n\
 log_file="/app/logs/mcpo_${date_str}.log"\n\
 if [ ! -z "$MCPO_API_KEY" ]; then\n\
-  uvx mcpo --host 0.0.0.0 --port 8000 --config /app/config/config.json --api-key $MCPO_API_KEY 2>&1 | tee -a "$log_file"\n\
+RUN echo '#!/bin/bash\n\
+date_str=$(date +"%Y%m%d_%H%M%S")\n\
+log_file="/app/logs/mcpo_${date_str}.log"\n\
+if [ ! -z "$MCPO_API_KEY" ]; then\n\
+  uvx mcpo --host 0.0.0.0 --port 8000 --config /app/config/config.json --api-key $MCPO_API_KEY --timeout 600 2>&1 | tee -a "$log_file"\n\
 else\n\
-  uvx mcpo --host 0.0.0.0 --port 8000 --config /app/config/config.json 2>&1 | tee -a "$log_file"\n\
+  uvx mcpo --host 0.0.0.0 --port 8000 --config /app/config/config.json --timeout 600 2>&1 | tee -a "$log_file"\n\
 fi' > /app/start.sh && chmod +x /app/start.sh
 
 ENTRYPOINT ["/app/start.sh"]
