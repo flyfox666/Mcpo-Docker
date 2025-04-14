@@ -1,52 +1,85 @@
-FROM python:3.11-slim
+FROM python:3.13-slim
+
 LABEL org.opencontainers.image.title="mcpo"
 LABEL org.opencontainers.image.description="Docker image for mcpo (Model Context Protocol OpenAPI Proxy)"
 LABEL org.opencontainers.image.licenses="MIT"
+LABEL maintainer="your_email@example.com"
 
-# 安装基本依赖
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
+# Install base dependencies and Node.js in a single layer (as root)
+# Ensure curl is installed *before* it's used by the NodeSource script
+RUN set -eux; \
+    apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && \
+    # Configure apt sources (use Aliyun mirror)
+    for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/debian.sources; do \
+      [ -f "$f" ] && sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors.aliyun.com|g' "$f" || true; \
+    done && \
+    # Add NodeSource repo for Node.js 22.x
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    # Update again after adding new source and install remaining packages
+    && apt-get update && apt-get install -y --no-install-recommends \
+    bash \
+    jq \
     nodejs \
-    npm \
-    ca-certificates \
+    # Clean up apt cache
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-	
-# 安装uv
-RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/usr/local/bin" sh
+    && rm -rf /var/lib/apt/lists/* \
+    # Verify npm/npx installation path
+    && echo "--- Debug: Verifying npm/npx path ---" \
+    && which npm \
+    && which npx || echo "npx not found immediately after install"
 
-# 安装mcpo和相关工具
-RUN uv pip install --system mcpo mcp-server-fetch
+# Create application directories (as root)
+RUN mkdir -p /app/config /app/logs /app/data /app/node_modules /app/.npm /app/.cache/uv
 
-# 安装Node.js MCP服务器包,根据你自己的需要增加相应的mcp
-RUN npm install -g \
-    @amap/amap-maps-mcp-server \
-    @baidumap/mcp-server-baidu-map \
-    @modelcontextprotocol/server-brave-search \
-    tavily-mcp@0.1.4
-	
-# 创建配置目录和日志目录 - 这是一个单独的RUN命令
-RUN mkdir -p /app/config /app/logs
+# Copy start script (as root)
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# Create non-root user and grant ownership (as root)
+RUN useradd -m -d /app -s /bin/bash appuser && chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
 WORKDIR /app
+
+# Set environment variables for the non-root user
+# Ensure user's local bin and Node's global bin are in PATH
+ENV HOME=/app \
+    PATH=/app/.local/bin:/usr/bin:/usr/local/bin:$PATH \
+    UV_CACHE_DIR=/app/.cache/uv \
+    NPM_CONFIG_CACHE=/app/.npm \
+    MCPO_LOG_DIR="/app/logs"
+
+# Accept PIP_SOURCE build argument
+ARG PIP_SOURCE=""
+# Make PIP_SOURCE available as an environment variable for the RUN layer below
+ENV PIP_SOURCE=${PIP_SOURCE}
+
+# Install uv using pip, respecting PIP_SOURCE via environment variable (as non-root user)
+RUN set -eux; \
+    echo "--- Debug: Checking PIP_SOURCE value ---"; \
+    echo "PIP_SOURCE Env Var: ${PIP_SOURCE:-<not set or empty>}"; \
+    # Set PIP_INDEX_URL environment variable if PIP_SOURCE is valid
+    if [ -n "$PIP_SOURCE" ] && echo "$PIP_SOURCE" | grep -q '^https://'; then \
+      export PIP_INDEX_URL="$PIP_SOURCE"; \
+      echo "已设置 PIP_INDEX_URL 环境变量为: $PIP_INDEX_URL"; \
+    else \
+      echo "未设置自定义 pip 源，将使用默认源"; \
+      # Unset PIP_INDEX_URL just in case it was inherited
+      unset PIP_INDEX_URL; \
+    fi; \
+    # Install/upgrade pip and install uv for the user (pin version for reproducibility)
+    echo "--- Debug: Upgrading pip ---"; \
+    python -m pip install --upgrade pip --user; \
+    echo "--- Debug: Installing uv (using source: ${PIP_INDEX_URL:-<default>}) ---"; \
+    python -m pip install --user uv==0.6.14; \
+    # Verify uv installation
+    echo "--- Debug: Verifying uv installation ---"; \
+    uv --version
+
 EXPOSE 8000
 
-# 环境变量，用于API密钥
-ENV MCPO_API_KEY=""
-
-# 设置日志输出目录
-ENV MCPO_LOG_DIR="/app/logs"
-
-# 测试uvx命令是否工作
-RUN uvx --help
-
-# 使用带日志输出的启动脚本
-RUN echo '#!/bin/bash\n\
-date_str=$(date +"%Y%m%d_%H%M%S")\n\
-log_file="/app/logs/mcpo_${date_str}.log"\n\
-if [ ! -z "$MCPO_API_KEY" ]; then\n\
-  uvx mcpo --host 0.0.0.0 --port 8000 --config /app/config/config.json --api-key $MCPO_API_KEY --timeout 600 2>&1 | tee -a "$log_file"\n\
-else\n\
-  uvx mcpo --host 0.0.0.0 --port 8000 --config /app/config/config.json --timeout 600 2>&1 | tee -a "$log_file"\n\
-fi' > /app/start.sh && chmod +x /app/start.sh
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:8000/docs || exit 1
 
 ENTRYPOINT ["/app/start.sh"]
