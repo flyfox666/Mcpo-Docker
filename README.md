@@ -1,6 +1,6 @@
 # Docker 构建与部署指南（mcpo 项目）
 
-感谢 @BigUncle 的更新
+感谢 @BigUncle 的pull
 
 本指南系统整理了 mcpo 项目在 Docker 容器环境下的构建、部署、常见问题排查与最佳实践，反映了项目当前的最新状态。
 
