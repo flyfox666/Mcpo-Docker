@@ -8,7 +8,7 @@ services:
     container_name: mcpo
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - 8000:8000
     volumes:
       - ./config.json:/app/config/config.json
       - ./logs:/app/logs
@@ -23,7 +23,7 @@ services:
     # environment:
     #   - MCPO_API_KEY=${MCPO_API_KEY}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      test: CMD curl -f http://localhost:8000/docs
       interval: 30s
       timeout: 10s
       retries: 3

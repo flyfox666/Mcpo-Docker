@@ -5,28 +5,30 @@ LABEL org.opencontainers.image.description="Docker image for mcpo (Model Context
 LABEL org.opencontainers.image.licenses="MIT"
 LABEL maintainer="your_email@example.com"
 
-# Install base dependencies and Node.js in a single layer (as root)
-# Ensure curl is installed *before* it's used by the NodeSource script
+# Install base dependencies, Node.js, and Git in a single layer (as root)
 RUN set -eux; \
-    apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && \
     # Configure apt sources (use Aliyun mirror)
     for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/debian.sources; do \
       [ -f "$f" ] && sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors.aliyun.com|g' "$f" || true; \
     done && \
+    # Install curl and ca-certificates first for NodeSource script
+    apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && \
     # Add NodeSource repo for Node.js 22.x
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    # Update again after adding new source and install remaining packages
+    # Update again after adding new source and install remaining packages, including git
     && apt-get update && apt-get install -y --no-install-recommends \
     bash \
     jq \
     nodejs \
+    git \
     # Clean up apt cache
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
-    # Verify npm/npx installation path
-    && echo "--- Debug: Verifying npm/npx path ---" \
+    # Verify npm/npx and git installation path
+    && echo "--- Debug: Verifying npm/npx/git path ---" \
     && which npm \
-    && which npx || echo "npx not found immediately after install"
+    && which npx \
+    && which git || echo "npm, npx, or git not found immediately after install"
 
 # Create application directories (as root)
 RUN mkdir -p /app/config /app/logs /app/data /app/node_modules /app/.npm /app/.cache/uv
@@ -43,7 +45,7 @@ USER appuser
 WORKDIR /app
 
 # Set environment variables for the non-root user
-# Ensure user's local bin and Node's global bin are in PATH
+# Ensure user's local bin and Node's/Git's global bin are in PATH
 ENV HOME=/app \
     PATH=/app/.local/bin:/usr/bin:/usr/local/bin:$PATH \
     UV_CACHE_DIR=/app/.cache/uv \

@@ -11,9 +11,13 @@
         "AMAP_MAPS_API_KEY": "xxx"
       }
     },
+    "git": {
+      "command": "uvx",
+      "args": ["mcp-server-git"]
+    },
     "duckduckgo": {
       "command": "uvx",
-      "args": ["mcp-server-duckduckgo"]
+      "args": ["duckduckgo-mcp-server"]
     },
     "baidu-map": {
       "command": "npx",
