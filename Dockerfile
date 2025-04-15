@@ -3,7 +3,7 @@ FROM python:3.13-slim
 LABEL org.opencontainers.image.title="mcpo"
 LABEL org.opencontainers.image.description="Docker image for mcpo (Model Context Protocol OpenAPI Proxy)"
 LABEL org.opencontainers.image.licenses="MIT"
-LABEL maintainer="your_email@example.com"
+LABEL maintainer="flyfox666@gmail.com, biguncle2017@gmail.com"
 
 # Install base dependencies, Node.js, and Git in a single layer (as root)
 RUN set -eux; \
