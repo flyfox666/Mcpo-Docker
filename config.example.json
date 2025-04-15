@@ -11,6 +11,14 @@
         "AMAP_MAPS_API_KEY": "xxx"
       }
     },
+    "git": {
+      "command": "uvx",
+      "args": ["mcp-server-git"]
+    },
+    "duckduckgo": {
+      "command": "uvx",
+      "args": ["duckduckgo-mcp-server"]
+    },
     "baidu-map": {
       "command": "npx",
       "args": ["-y", "@baidumap/mcp-server-baidu-map"],
@@ -31,6 +39,6 @@
       "env": {
         "TAVILY_API_KEY": "xxx"
       }
-    }	
+    }
   }
 }
