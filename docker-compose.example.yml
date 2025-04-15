@@ -1,22 +1,27 @@
-version: '3'
-
 services:
   mcpo:
-    build: .
+    build:
+      context: .
+      args:
+        # 从 .env 文件读取 PIP_SOURCE 并传递给 Dockerfile
+        - PIP_SOURCE=${PIP_SOURCE:-} # 使用 :-} 避免未设置时出错
     container_name: mcpo
     restart: unless-stopped
-    image: ghcr.io/flyfox666/mcpo_docker_use # or flyfox666bbw/mcpo_docker_use from dockerhub
     ports:
       - "8000:8000"
     volumes:
-      - ./config.json:/app/config/config.json  # update the setting as you set
-      - ./logs:/app/logs # update the setting as you set
-    environment:
-      - MCPO_API_KEY=xxx  # set the apikey here
-      # if need ,use the set as your setting
-      # - MCPO_HOST=0.0.0.0
-      # - MCPO_PORT=8000
-      # - MCPO_CONFIG=/app/config.json
+      - ./config.json:/app/config/config.json
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./node_modules:/app/node_modules # 持久化 node_modules
+      - ./.npm:/app/.npm # 持久化 npm 缓存
+      - ./.uv_cache:/app/.cache/uv # 持久化 uv 缓存 (注意路径改为 /app/.cache/uv)
+    # 使用 env_file 或 environment 传递运行时环境变量
+    env_file:
+      - .env # 加载 .env 文件中的所有变量作为运行时环境变量
+    # 或者只传递需要的变量
+    # environment:
+    #   - MCPO_API_KEY=${MCPO_API_KEY}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
       interval: 30s
