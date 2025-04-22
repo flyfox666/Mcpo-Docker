@@ -1,5 +1,3 @@
-I'd be happy to translate your README.md file to English for your GitHub project. Here's the professional translation:
-
 # Docker Build and Deployment Guide (mcpo project)
 
 Thanks to @BigUncle for the pull request
